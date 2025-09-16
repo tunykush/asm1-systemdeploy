@@ -1,0 +1,33 @@
+This file is to write our analysis on YeetCode.Inc's problems, solution and justifications.
+
+*Analysing YeetCode.Inc's problems*
+
+1. The web application's development and deployment is solely dependant on the lead developer (Pete), which:
+    - Makes development harder, slower and inconvenient due to always requiring Pete and his device to be available.
+    - Creates a single point of failure. For example, if Pete's laptop fails, is damaged or lost, the code could be at risk of being permanently lost.
+    
+2. Numerous bugs occuring during development, which:
+    - Results in bad user experience, leading to increased customer support calls. 
+    => Support and development teams work under stress to fulfill workloads and resolve issues. This can further reduce the quality of the application.
+    - Indicates that testing has not been conducted properly and carefully during development.
+    
+*Solution and justifications*
+
+Solution: Building a continous intergration (CI) pipeline using Github to organize and automate developing and testing.
+
+The CI pipeline includes two main types of testing:
+- Static analysis: Linting
+- Dynamic analysis: Unit testing, code coverage, integration testing, end-to-end testing
+
+The CI pipeline's branching strategy:
+- Use multiple branches to develop new features and test them before merging into main branch. This enforces high quality code with minimal errors, ensuring the main branch is always ready for deployment.
+- Use pull requests to encourages code review before merging into the main branch.
+- All branches are configured to run the pipeline, ensuring that code is always tested befroe merging.
+
+Justfication: Why build a CI pipeline ?
+- Quickly and easily identify errors and bugs early on during development by static and dynamic testing using Github Actions.
+- Removes dependancy on a specific person or device to be available (in this case, the lead developer Pete and his laptop).
+- Improve the program's quality and ensure it runs as intended through intricate testing. => Enhance user experience and application performance.
+- Improve work quality and overall moral for staff by mitgating workloads on manual testing and bug fixing.
+
+ 

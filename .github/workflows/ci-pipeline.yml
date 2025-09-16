@@ -1,0 +1,149 @@
+name: Notes Application CI Pipeline
+
+"on":
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Static Code Analysis / Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm ci --prefix src
+      - name: Run lint
+        run: npm run test:lint --prefix src
+
+  unit-test:
+    name: Unit Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm ci --prefix src
+      - name: Run Unit Tests
+        run: npm run test:unit --prefix src
+      - if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-${{ github.sha }}
+          path: reports/report.xml
+
+  code-coverage:
+    name: Ensure Code Coverage is Checked
+    runs-on: ubuntu-latest
+    needs: [lint, unit-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm ci --prefix src
+      - name: Run Code Coverage
+        run: npm run test:unit -- --coverage
+        working-directory: src
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  integration-test:
+    name: Integration Testing
+    runs-on: ubuntu-latest
+    needs: [lint, unit-test, code-coverage]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Use MongoDB in Github Actions
+        uses: MongoCamp/mongodb-github-action@1.2.0
+      - name: Install dependencies
+        run: npm ci --prefix src
+      - name: Run Integration Tests
+        run: npm run test:integration --prefix src
+
+  e2e-tests:
+    name: End-to-End Testing
+    runs-on: ubuntu-latest
+    needs: [code-coverage, integration-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Use MongoDB in Github Actions
+        uses: MongoCamp/mongodb-github-action@1.2.0
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run the application
+        run: npm run start &
+        working-directory: src
+      - name: Wait for app
+        run: npx wait-on http://localhost:3000
+        working-directory: src
+      - name: Run E2E tests
+        run: npx playwright test
+        working-directory: src
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: src/playwright-report
+      - name: Upload E2E test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-tests-failure-logs
+          path: src/e2e-tests-failed.log
+
+          
+
+  build:
+    name: Generating Deployable Artifact
+    runs-on: ubuntu-latest
+    needs: [code-coverage, e2e-tests]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm ci --prefix src
+      - name: Build Project
+        run: npm run build --prefix src
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: src/dist
